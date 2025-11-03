@@ -42,7 +42,7 @@ export const addProduct = async (req, res) => {
       .from("product-images")
       .getPublicUrl(fileName);
 
-    const imageUrl = publicURLData.publicUrl;
+    const imageFile = publicURLData.publicUrl;
 
     // Create product document
     const product = new Product({
@@ -50,7 +50,7 @@ export const addProduct = async (req, res) => {
       description,
       price,
       category,
-      image: imageUrl,
+      image: imageFile,
     });
 
     const createdProduct = await product.save();
@@ -66,17 +66,41 @@ export const updateProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+    // Handle optional image upload
+    let imageFile = product.image;
+
+    if (req.file) {
+      const fileName = `${Date.now()}_${req.file.originalname}`;
+      const { data, error } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+        });
+
+      if (error) throw error;
+
+      const { data: publicURLData } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      imageFile = publicURLData.publicUrl;
+    }
+
+    // Update fields
     product.name = req.body.name || product.name;
     product.description = req.body.description || product.description;
     product.price = req.body.price || product.price;
     product.category = req.body.category || product.category;
+    product.image = imageFile;
 
     const updated = await product.save();
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Update error:", error);
+    res.status(500).json({ message: "Update failed", error: error.message });
   }
 };
+
 
 export const deleteProduct = async (req, res) => {
   try {
