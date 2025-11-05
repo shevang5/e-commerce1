@@ -35,12 +35,42 @@ export const getCart = async (req, res) => {
   res.json(cart);
 };
 
-export const removeFromCart = async (req, res) => { 
-  const { productId } = req.body;
-  const cart = await Cart.findOneAndUpdate(
-    { user: req.user._id },
-    { $pull: { items: { product: productId } } },
-    { new: true }
-  ).populate("items.product");
-  res.json(cart);
+export const removeFromCart = async (req, res) => {
+  try {
+    // productId comes from the URL param (DELETE /cart/:productId)
+    const { productId } = req.params;
+    const cart = await Cart.findOneAndUpdate(
+      { user: req.user._id },
+      { $pull: { items: { product: productId } } },
+      { new: true }
+    ).populate("items.product");
+
+    res.json(cart);
+  } catch (err) {
+    console.error("Remove from cart error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const updateItemQuantity = async (req, res) => {
+  try {
+    const { itemId } = req.params; // cart item _id (subdocument id)
+    const { type } = req.body; // 'inc' or 'dec'
+
+    const cart = await Cart.findOne({ user: req.user._id });
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
+
+    const item = cart.items.id(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found in cart" });
+
+    if (type === "inc") item.quantity += 1;
+    else if (type === "dec") item.quantity = Math.max(1, item.quantity - 1);
+
+    await cart.save();
+    await cart.populate("items.product");
+    res.json(cart);
+  } catch (err) {
+    console.error("Update item quantity error:", err);
+    res.status(500).json({ message: err.message });
+  }
 };
