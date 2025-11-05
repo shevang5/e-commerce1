@@ -35,8 +35,8 @@ export const getCart = async (req, res) => {
   res.json(cart);
 };
 
-export const removeFromCart = async (req, res) => {
-  const { productId } = req.params;
+export const removeFromCart = async (req, res) => { 
+  const { productId } = req.body;
   const cart = await Cart.findOneAndUpdate(
     { user: req.user._id },
     { $pull: { items: { product: productId } } },
