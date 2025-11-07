@@ -1,5 +1,6 @@
 // controllers/orderController.js
 import Order from "../models/Order.js";
+import Cart from "../models/Cart.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -19,6 +20,14 @@ export const createOrder = async (req, res) => {
 
     // Populate product details
     await order.populate("products.product");
+
+    // Clear user's cart after successful order creation
+    try {
+      await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
+    } catch (err) {
+      console.error("Failed to clear cart after order:", err);
+      // Non-fatal: we still return the created order
+    }
 
     res.status(201).json(order);
   } catch (error) {
